@@ -1,113 +1,200 @@
-import Image from "next/image";
+"use client";
+
+import { Stack, Tabs } from "@mui/material";
+import {
+  Button,
+  Checkbox,
+  CheckboxGroup,
+  Input,
+  Select,
+  SelectItem,
+} from "@nextui-org/react";
+import { useEffect, useState } from "react";
+import ChooseCustomerOffer from "./Tabs";
+import { toast } from "react-toastify";
+
+enum EnergyTyp {
+  GAS = "gas",
+  STROM = "electricity",
+}
+
+export interface User {
+  id?: String;
+  name: String;
+  email: String;
+  info: EnergyTyp;
+  isEnabled?: Boolean;
+}
+
+export interface Offer {
+  postalCode: String;
+  cityId: Number;
+  cityName: String;
+  productCode: String;
+  campaignIdentifier: String;
+  usage: Number;
+  energyType: String;
+}
+
+async function newUser() {
+  const res = await fetch("/api/users", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(newUser),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch data");
+  }
+
+  return res.json();
+}
 
 export default function Home() {
+  const [plz, setPlz] = useState("");
+  const [stadt, setStadt] = useState("");
+  const [verbrauch, setVerbrauch] = useState("");
+  const [kampagne, setKampagne] = useState("");
+
+  const [anrede, setAnrede] = useState("");
+  const [kundenName, setKundenName] = useState("");
+  const [email, setEmail] = useState("");
+
+  const [loading, setLoading] = useState(false);
+
+  const [gasSelected, setGasSelected] = useState<boolean>(true);
+  const [stromSelected, setStromSelected] = useState<boolean>(false);
+
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const saveUser = async (newUser: User) => {
+    const res = await fetch("/api/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newUser),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch data");
+    }
+
+    return res.json();
+  };
+
+  const priceLocatorAPI = async () => {
+    const newOffer: Offer = {
+      campaignIdentifier: kampagne,
+      cityId: 2186,
+      cityName: stadt,
+      energyType: gasSelected ? EnergyTyp.GAS : EnergyTyp.STROM,
+      postalCode: plz,
+      productCode: "G_OEKO_12",
+      usage: Number(verbrauch),
+    };
+    debugger;
+    const res = await fetch("/api/priceLocator", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newOffer),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch data");
+    }
+
+    return res.json();
+  };
+
+  const validateInputs = () => {
+    if (stadt === "") {
+      setErrorMessage("Bitte Adresse eingeben");
+      return false;
+    } else if (verbrauch === "") {
+      setErrorMessage("Bitte Verbrauch eingeben");
+      return false;
+    } else if (kampagne === "") {
+      setErrorMessage("Bitte Kampagne zuordnen");
+      return false;
+    } else if (kundenName === "") {
+      setErrorMessage("Bitte Kundenname eingeben");
+      return false;
+    } else if (email === "") {
+      setErrorMessage("Bitte Email eingeben");
+      return false;
+    }
+    return true;
+  };
+
+  useEffect(() => {
+    if (errorMessage !== "") {
+      toast.error(errorMessage);
+      setLoading(false);
+      setErrorMessage("");
+    }
+  }, [errorMessage]);
+
+  const createOffer = async () => {
+    setLoading(true);
+    const validation = validateInputs();
+
+    if (validation) {
+      const newUser: User = {
+        name: kundenName,
+        email: email,
+        info: gasSelected ? EnergyTyp.GAS : EnergyTyp.STROM,
+        isEnabled: false,
+      };
+      const offer = await priceLocatorAPI();
+
+      console.log(offer.clientPriceData);
+
+      const success = await saveUser(newUser);
+
+      console.log(success);
+      toast.success(`Angebot an ${email} wurde versandt`);
+      setLoading(false);
+    }
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
+    <div className="p-24">
+      <ChooseCustomerOffer
+        setPlz={setPlz}
+        setStadt={setStadt}
+        setVerbrauch={setVerbrauch}
+        setKampagne={setKampagne}
+        setEmail={setEmail}
+        setAnrede={setAnrede}
+        setKundenName={setKundenName}
+        setGasSelected={setGasSelected}
+        setStromSelected={setStromSelected}
+        gasSelected={gasSelected}
+        stromSelected={stromSelected}
+        plz={plz}
+        stadt={stadt}
+        verbrauch={verbrauch}
+        kampagne={kampagne}
+        kundenName={kundenName}
+        email={email}
+        loading={loading}
+      ></ChooseCustomerOffer>
+
+      <div className="w-full flex justify-center items-center">
+        <Button
+          color="primary"
+          className="w-full"
+          onClick={() => createOffer()}
+          isLoading={loading}
+        >
+          Angebot einholen
+        </Button>
       </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </div>
   );
 }
